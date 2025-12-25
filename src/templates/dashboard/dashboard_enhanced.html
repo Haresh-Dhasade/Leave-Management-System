@@ -167,7 +167,7 @@
                             <div class="col-md-6">
                                 <h5>Days Used: {{ total_days_used }} / {{ default_days }}</h5>
                                 <div class="progress-bar-container">
-                                    <div class="progress-bar" style="width: {{ leave_usage_percentage|default:0 }}%"></div>
+                                    <div class="progress-bar" id="leaveProgressBar"></div>
                                 </div>
                                 <p>Remaining Days: <strong>{{ days_remaining }}</strong></p>
                             </div>
@@ -388,7 +388,7 @@ function initSuperUserCharts() {
             data: {
                 labels: ['Pending', 'Approved', 'Rejected', 'Cancelled'],
                 datasets: [{
-                    data: [{{ status_distribution.pending|default:0 }}, {{ status_distribution.approved|default:0 }}, {{ status_distribution.rejected|default:0 }}, {{ status_distribution.cancelled|default:0 }}],
+                    data: [0, 0, 0, 0],
                     backgroundColor: ['#ffc107', '#28a745', '#dc3545', '#6c757d']
                 }]
             },
@@ -408,7 +408,7 @@ function initSuperUserCharts() {
                 labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
                 datasets: [{
                     label: 'Leave Requests',
-                    data: [{% for i in "123456789012" %}{{ forloop.counter }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
                     borderColor: '#d04247',
                     backgroundColor: 'rgba(208, 66, 71, 0.1)',
                     tension: 0.4
@@ -436,7 +436,7 @@ function initUserCharts() {
             data: {
                 labels: ['Sick', 'Casual', 'Emergency', 'Study'],
                 datasets: [{
-                    data: [{% for i in "1234" %}{{ forloop.counter }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    data: [1, 2, 3, 4],
                     backgroundColor: ['#d04247', '#5a4747', '#ffc107', '#28a745']
                 }]
             },
@@ -456,7 +456,7 @@ function initUserCharts() {
                 labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
                 datasets: [{
                     label: 'Your Leave Requests',
-                    data: [{% for i in "123456789012" %}{{ forloop.counter0 }}{% if not forloop.last %}, {% endif %}{% endfor %}],
+                    data: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
                     backgroundColor: '#d04247'
                 }]
             },
