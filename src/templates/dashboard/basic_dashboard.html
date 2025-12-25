@@ -1,0 +1,282 @@
+{% extends '_layout.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block stylesheet %}
+<style>
+    .stat-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 10px 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+        border-left: 4px solid #d04247;
+    }
+
+    .stat-number {
+        font-size: 2em;
+        font-weight: bold;
+        color: #d04247;
+    }
+
+    .stat-label {
+        color: #666;
+        font-size: 0.9em;
+    }
+
+    .leave-item {
+        border-left: 4px solid #d04247;
+        padding: 15px;
+        margin: 10px 0;
+        background: #f8f9fa;
+        border-radius: 0 5px 5px 0;
+    }
+
+    .status-pending { border-left-color: #ffc107; }
+    .status-approved { border-left-color: #28a745; }
+    .status-rejected { border-left-color: #dc3545; }
+    .status-cancelled { border-left-color: #6c757d; }
+
+    .leave-type-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        margin: 5px 0;
+        background: #f8f9fa;
+        border-radius: 5px;
+    }
+
+    .dashboard-section {
+        margin: 30px 0;
+    }
+
+    .welcome-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border: none;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="content">
+    <section class="container-fluid">
+        
+        <!-- Welcome Message -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card welcome-card">
+                    <div class="card-body">
+                        <h4><i class="icon fa fa-user"></i> Welcome, {{ request.user.username }}!</h4>
+                        {% if user_type == 'superuser' %}
+                            <p>Manage your organization's leave requests and view comprehensive analytics.</p>
+                        {% else %}
+                            <p>Track your leave history and manage your leave requests.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row dashboard-section">
+            {% if user_type == 'superuser' %}
+                <div class="col-lg-3 col-md-6">
+                    <div class="stat-card">
+                        <div class="stat-number">{{ total_employees }}</div>
+                        <div class="stat-label">Total Employees</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="stat-card">
+                        <div class="stat-number">{{ total_leaves }}</div>
+                        <div class="stat-label">Total Leave Requests</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="stat-card">
+                        <div class="stat-number">{{ pending_leaves }}</div>
+                        <div class="stat-label">Pending Requests</div>
+                    </div>
+                </div>
+                <div class="col-lg-3 col-md-6">
+                    <div class="stat-card">
+                        <div class="stat-number">{{ approved_leaves }}</div>
+                        <div class="stat-label">Approved Requests</div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="col-lg-4 col-md-6">
+                    <div class="stat-card">
+                        <div class="stat-number">{{ total_leaves }}</div>
+                        <div class="stat-label">Total Leave Requests</div>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <div class="stat-card">
+                        <div class="stat-number">{{ approved_leaves }}</div>
+                        <div class="stat-label">Approved Requests</div>
+                    </div>
+                </div>
+                <div class="col-lg-4 col-md-6">
+                    <div class="stat-card">
+                        <div class="stat-number">{{ pending_leaves }}</div>
+                        <div class="stat-label">Pending Requests</div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+
+        <!-- Leave Balance Section (for regular users) -->
+        {% if user_type == 'regular' %}
+        <div class="row dashboard-section">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Leave Balance</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>Days Used: {{ total_days_used }} / {{ default_days }}</h5>
+                                <p>Remaining Days: <strong>{{ days_remaining }}</strong></p>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>Quick Stats</h5>
+                                <ul class="list-unstyled">
+                                    <li>Rejected: {{ rejected_leaves }}</li>
+                                    <li>Cancelled: {{ cancelled_leaves }}</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Additional Analytics for Super Users -->
+        {% if user_type == 'superuser' %}
+        <div class="row dashboard-section">
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Department Statistics</h3>
+                    </div>
+                    <div class="card-body">
+                        {% for dept in department_stats %}
+                        <div class="leave-type-item">
+                            <span>{{ dept.name }}</span>
+                            <span>{{ dept.leaves }} requests ({{ dept.pending }} pending)</span>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted">No department data available.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Top Leave Takers</h3>
+                    </div>
+                    <div class="card-body">
+                        {% for user in top_leave_takers %}
+                        <div class="leave-type-item">
+                            <span>{{ user.username }}</span>
+                            <span>{{ user.leave_count }} requests</span>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted">No leave data available.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Leave Types Breakdown -->
+        <div class="row dashboard-section">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Leave Type Breakdown</h3>
+                    </div>
+                    <div class="card-body">
+                        {% if user_type == 'superuser' %}
+                            {% for leave_type, count in leave_type_stats.items %}
+                            <div class="leave-type-item">
+                                <span>{{ leave_type }}</span>
+                                <span>{{ count }} requests</span>
+                            </div>
+                            {% empty %}
+                            <p class="text-muted">No leave type data available.</p>
+                            {% endfor %}
+                        {% else %}
+                            {% for leave_type, count in leave_types.items %}
+                            <div class="leave-type-item">
+                                <span>{{ leave_type|title }}</span>
+                                <span>{{ count }} requests</span>
+                            </div>
+                            {% empty %}
+                            <p class="text-muted">No leave type data available.</p>
+                            {% endfor %}
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Leave Requests -->
+        <div class="row dashboard-section">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Recent Leave Requests</h3>
+                    </div>
+                    <div class="card-body">
+                        {% for leave in recent_leaves %}
+                        <div class="leave-item status-{{ leave.status }}">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <h5>{{ leave.leavetype|title }} Leave</h5>
+                                    <p>{{ leave.startdate }} to {{ leave.enddate }}</p>
+                                    {% if user_type == 'superuser' %}
+                                    <small>By: {{ leave.user.username }}</small>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4 text-right">
+                                    <span class="badge badge-{% if leave.status == 'approved' %}success{% elif leave.status == 'pending' %}warning{% elif leave.status == 'rejected' %}danger{% else %}secondary{% endif %}">
+                                        {{ leave.status|title }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted">No recent leave requests.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </section>
+</section>
+{% endblock %}
+
+{% block extrajs %}
+<script>
+$(document).ready(function() {
+    // Simple welcome notification
+    $.notify({
+        icon: 'fa fa-user',
+        message: "Welcome to Enhanced LMS Dashboard, {{ request.user.username }}"
+    },{
+        type: 'info',
+        timer: 4000
+    });
+});
+</script>
+{% endblock %}

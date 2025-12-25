@@ -1,0 +1,186 @@
+{% extends '_layout.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block stylesheet %}
+<style>
+    .analytics-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 10px 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border-left: 4px solid #d04247;
+    }
+
+    .metric-value {
+        font-size: 2.5em;
+        font-weight: bold;
+        color: #d04247;
+    }
+
+    .metric-label {
+        color: #666;
+        font-size: 0.9em;
+        margin-top: 5px;
+    }
+
+    .department-metric {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        margin: 5px 0;
+        background: #f8f9fa;
+        border-radius: 5px;
+    }
+
+    .activity-item {
+        border-left: 4px solid #d04247;
+        padding: 15px;
+        margin: 10px 0;
+        background: #f8f9fa;
+        border-radius: 0 5px 5px 0;
+    }
+
+    .status-approved { border-left-color: #28a745; }
+    .status-pending { border-left-color: #ffc107; }
+    .status-rejected { border-left-color: #dc3545; }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="content">
+    <section class="container-fluid">
+        
+        <!-- Page Header -->
+        <div class="row">
+            <div class="col-12">
+                <div class="page-header">
+                    <h2><i class="icon fa fa-chart-line"></i> Leave Analytics Dashboard</h2>
+                    <p>Comprehensive analytics and insights for organizational leave management</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="row">
+            <div class="col-lg-3 col-md-6">
+                <div class="analytics-card">
+                    <div class="metric-value">{{ total_leaves }}</div>
+                    <div class="metric-label">Total Leave Requests</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="analytics-card">
+                    <div class="metric-value">{{ approved_rate|floatformat:1 }}%</div>
+                    <div class="metric-label">Approval Rate</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="analytics-card">
+                    <div class="metric-value">{{ leaves.count }}</div>
+                    <div class="metric-label">Requests in Period</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="analytics-card">
+                    <div class="metric-value">{{ pending_leaves|default:0 }}</div>
+                    <div class="metric-label">Pending Requests</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Department Analysis -->
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Department Statistics</h3>
+                    </div>
+                    <div class="card-body">
+                        {% for dept in department_stats %}
+                        <div class="department-metric">
+                            <span>{{ dept.name }}</span>
+                            <span>{{ dept.leaves }} requests ({{ dept.pending }} pending)</span>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted">No department data available.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Top Leave Takers</h3>
+                    </div>
+                    <div class="card-body">
+                        {% for user in top_leave_takers %}
+                        <div class="department-metric">
+                            <span>{{ user.username }}</span>
+                            <span>{{ user.leave_count }} requests</span>
+                        </div>
+                        {% empty %}
+                        <p class="text-muted">No leave data available.</p>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Recent Leave Activity</h3>
+                    </div>
+                    <div class="card-body">
+                        {% for leave in leaves %}
+                        <div class="activity-item status-{{ leave.status }}">
+                            <div class="row">
+                                <div class="col-md-8">
+                                    <h6>{{ leave.user.username }} - {{ leave.leavetype|title }} Leave</h6>
+                                    <p>{{ leave.startdate }} to {{ leave.enddate }}</p>
+                                    {% if leave.reason %}
+                                    <small class="text-muted">Reason: {{ leave.reason|truncatechars:50 }}</small>
+                                    {% endif %}
+                                </div>
+                                <div class="col-md-4 text-right">
+                                    <span class="badge badge-{% if leave.status == 'approved' %}success{% elif leave.status == 'pending' %}warning{% elif leave.status == 'rejected' %}danger{% else %}secondary{% endif %}">
+                                        {{ leave.status|title }}
+                                    </span>
+                                    <br>
+                                    <small class="text-muted">{{ leave.created|date:"M d, Y" }}</small>
+                                </div>
+                            </div>
+                        </div>
+                        {% empty %}
+                        <div class="alert alert-info">
+                            <i class="icon fa fa-info-circle"></i>
+                            No leave activity found.
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </section>
+</section>
+{% endblock %}
+
+{% block extrajs %}
+<script>
+$(document).ready(function() {
+    $.notify({
+        icon: 'fa fa-chart-line',
+        message: "Analytics Dashboard Loaded Successfully"
+    },{
+        type: 'info',
+        timer: 3000
+    });
+});
+</script>
+{% endblock %}

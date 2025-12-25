@@ -1,0 +1,257 @@
+{% extends '_layout.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block stylesheet %}
+<style>
+    .filter-section {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+    .history-table {
+        background: white;
+        border-radius: 8px;
+        overflow: hidden;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .status-badge {
+        padding: 5px 10px;
+        border-radius: 15px;
+        font-size: 0.8em;
+        font-weight: bold;
+    }
+
+    .status-pending { background-color: #ffc107; color: white; }
+    .status-approved { background-color: #28a745; color: white; }
+    .status-rejected { background-color: #dc3545; color: white; }
+    .status-cancelled { background-color: #6c757d; color: white; }
+
+    .leave-detail {
+        border-left: 4px solid #d04247;
+        padding: 15px;
+        margin: 10px 0;
+        background: #f8f9fa;
+        border-radius: 0 5px 5px 0;
+    }
+
+    .pagination-wrapper {
+        margin-top: 20px;
+        text-align: center;
+    }
+
+    .stats-summary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="content">
+    <section class="container-fluid">
+        
+        <!-- Page Header -->
+        <div class="row">
+            <div class="col-12">
+                <div class="page-header">
+                    <h2><i class="icon fa fa-history"></i> Leave History</h2>
+                    <p>Complete history of your leave requests with detailed information</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Statistics Summary -->
+        <div class="row">
+            <div class="col-12">
+                <div class="stats-summary">
+                    <div class="row">
+                        <div class="col-md-3 text-center">
+                            <h3>{{ leaves.paginator.count }}</h3>
+                            <p>Total Requests</p>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <h3>{{ total_days }}</h3>
+                            <p>Total Days</p>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <h3>{{ leaves|length }}</h3>
+                            <p>Showing</p>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <h3>{{ leaves.number }}</h3>
+                            <p>Page</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters -->
+        <div class="row">
+            <div class="col-12">
+                <div class="filter-section">
+                    <h5><i class="icon fa fa-filter"></i> Filter Leave History</h5>
+                    <form method="GET" class="form-inline">
+                        <div class="form-group mr-3">
+                            <label for="status">Status:</label>
+                            <select name="status" id="status" class="form-control ml-2">
+                                <option value="">All Statuses</option>
+                                <option value="pending" {% if status_filter == 'pending' %}selected{% endif %}>Pending</option>
+                                <option value="approved" {% if status_filter == 'approved' %}selected{% endif %}>Approved</option>
+                                <option value="rejected" {% if status_filter == 'rejected' %}selected{% endif %}>Rejected</option>
+                                <option value="cancelled" {% if status_filter == 'cancelled' %}selected{% endif %}>Cancelled</option>
+                            </select>
+                        </div>
+                        <div class="form-group mr-3">
+                            <label for="type">Leave Type:</label>
+                            <select name="type" id="type" class="form-control ml-2">
+                                <option value="">All Types</option>
+                                {% for leave_type, display_name in leave_types %}
+                                <option value="{{ leave_type }}" {% if type_filter == leave_type %}selected{% endif %}>{{ display_name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group mr-3">
+                            <label for="year">Year:</label>
+                            <select name="year" id="year" class="form-control ml-2">
+                                <option value="">All Years</option>
+                                {% for year in "2020,2021,2022,2023,2024,2025"|split:"," %}
+                                <option value="{{ year }}" {% if year_filter == year %}selected{% endif %}>{{ year }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="icon fa fa-search"></i> Filter
+                        </button>
+                        <a href="{% url 'dashboard:leave_history' %}" class="btn btn-secondary ml-2">
+                            <i class="icon fa fa-refresh"></i> Reset
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Leave History Table -->
+        <div class="row">
+            <div class="col-12">
+                <div class="history-table">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>Leave Type</th>
+                                    <th>Start Date</th>
+                                    <th>End Date</th>
+                                    <th>Days</th>
+                                    <th>Status</th>
+                                    <th>Reason</th>
+                                    <th>Applied On</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for leave in leaves %}
+                                <tr>
+                                    <td>{{ leave.leavetype|title }}</td>
+                                    <td>{{ leave.startdate }}</td>
+                                    <td>{{ leave.enddate }}</td>
+                                    <td>
+                                        {% if leave.leave_days %}
+                                            {{ leave.leave_days|add:1 }}
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="status-badge status-{{ leave.status }}">
+                                            {{ leave.status|title }}
+                                        </span>
+                                    </td>
+                                    <td>{{ leave.reason|truncatechars:30 }}</td>
+                                    <td>{{ leave.created|date:"M d, Y" }}</td>
+                                    <td>
+                                        <a href="#" class="btn btn-sm btn-info" title="View Details">
+                                            <i class="icon fa fa-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center">
+                                        <div class="alert alert-info">
+                                            <i class="icon fa fa-info-circle"></i>
+                                            No leave requests found matching your criteria.
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        {% if leaves.paginator.num_pages > 1 %}
+        <div class="row">
+            <div class="col-12">
+                <div class="pagination-wrapper">
+                    <nav aria-label="Leave history pagination">
+                        <ul class="pagination justify-content-center">
+                            {% if leaves.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page=1{% if status_filter %}&status={{ status_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if year_filter %}&year={{ year_filter }}{% endif %}">First</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ leaves.previous_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if year_filter %}&year={{ year_filter }}{% endif %}">Previous</a>
+                                </li>
+                            {% endif %}
+
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    Page {{ leaves.number }} of {{ leaves.paginator.num_pages }}
+                                </span>
+                            </li>
+
+                            {% if leaves.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ leaves.next_page_number }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if year_filter %}&year={{ year_filter }}{% endif %}">Next</a>
+                                </li>
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ leaves.paginator.num_pages }}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if type_filter %}&type={{ type_filter }}{% endif %}{% if year_filter %}&year={{ year_filter }}{% endif %}">Last</a>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+    </section>
+</section>
+{% endblock %}
+
+{% block extrajs %}
+<script>
+$(document).ready(function() {
+    // Auto-submit form when filters change
+    $('#status, #type, #year').change(function() {
+        $(this).closest('form').submit();
+    });
+
+    // Add loading state to filter button
+    $('form').submit(function() {
+        $(this).find('button[type="submit"]').prop('disabled', true).html('<i class="icon fa fa-spinner fa-spin"></i> Filtering...');
+    });
+});
+</script>
+{% endblock %}

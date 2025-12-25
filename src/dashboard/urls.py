@@ -6,6 +6,12 @@ app_name = 'dashboard'
 
 urlpatterns = [
     path('welcome/',views.dashboard,name='dashboard'),
+    
+    # Enhanced Dashboard Features
+    path('enhanced/', views.enhanced_dashboard, name='enhanced_dashboard'),
+    path('simple/', views.simple_dashboard, name='simple_dashboard'),
+    path('history/', views.leave_history, name='leave_history'),
+    path('analytics/', views.admin_leave_analytics, name='admin_leave_analytics'),
 
     # Employee
     path('employees/all/',views.dashboard_employees,name='employees'),
