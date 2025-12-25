@@ -1,0 +1,357 @@
+{% extends '_layout.html' %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block stylesheet %}
+<style>
+    .analytics-card {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin: 10px 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        border-left: 4px solid #d04247;
+    }
+
+    .metric-value {
+        font-size: 2.5em;
+        font-weight: bold;
+        color: #d04247;
+    }
+
+    .metric-label {
+        color: #666;
+        font-size: 0.9em;
+        margin-top: 5px;
+    }
+
+    .chart-container {
+        position: relative;
+        height: 400px;
+        margin: 20px 0;
+    }
+
+    .filter-panel {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+    }
+
+    .recent-activity {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+
+    .activity-item {
+        border-left: 4px solid #d04247;
+        padding: 15px;
+        margin: 10px 0;
+        background: #f8f9fa;
+        border-radius: 0 5px 5px 0;
+    }
+
+    .status-approved { border-left-color: #28a745; }
+    .status-pending { border-left-color: #ffc107; }
+    .status-rejected { border-left-color: #dc3545; }
+
+    .department-metric {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 10px;
+        margin: 5px 0;
+        background: #f8f9fa;
+        border-radius: 5px;
+    }
+
+    .progress-bar-custom {
+        background: #f0f0f0;
+        border-radius: 10px;
+        overflow: hidden;
+        height: 8px;
+        margin: 5px 0;
+    }
+
+    .progress-bar-fill {
+        height: 100%;
+        background: linear-gradient(to right, #d04247, #5a4747);
+        transition: width 0.3s ease;
+    }
+    
+    .progress-width-0 { width: 0%; }
+    .progress-width-5 { width: 5%; }
+    .progress-width-10 { width: 10%; }
+    .progress-width-15 { width: 15%; }
+    .progress-width-20 { width: 20%; }
+    .progress-width-25 { width: 25%; }
+    .progress-width-30 { width: 30%; }
+    .progress-width-35 { width: 35%; }
+    .progress-width-40 { width: 40%; }
+    .progress-width-45 { width: 45%; }
+    .progress-width-50 { width: 50%; }
+    .progress-width-55 { width: 55%; }
+    .progress-width-60 { width: 60%; }
+    .progress-width-65 { width: 65%; }
+    .progress-width-70 { width: 70%; }
+    .progress-width-75 { width: 75%; }
+    .progress-width-80 { width: 80%; }
+    .progress-width-85 { width: 85%; }
+    .progress-width-90 { width: 90%; }
+    .progress-width-95 { width: 95%; }
+    .progress-width-100 { width: 100%; }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="content">
+    <section class="container-fluid">
+        
+        <!-- Page Header -->
+        <div class="row">
+            <div class="col-12">
+                <div class="page-header">
+                    <h2><i class="icon fa fa-chart-line"></i> Leave Analytics Dashboard</h2>
+                    <p>Comprehensive analytics and insights for organizational leave management</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Date Range Filter -->
+        <div class="row">
+            <div class="col-12">
+                <div class="filter-panel">
+                    <h5><i class="icon fa fa-calendar"></i> Analytics Period</h5>
+                    <form method="GET" class="form-inline">
+                        <div class="form-group mr-3">
+                            <label for="start_date">Start Date:</label>
+                            <input type="date" name="start_date" id="start_date" class="form-control ml-2" value="{{ start_date|default:'' }}">
+                        </div>
+                        <div class="form-group mr-3">
+                            <label for="end_date">End Date:</label>
+                            <input type="date" name="end_date" id="end_date" class="form-control ml-2" value="{{ end_date|default:'' }}">
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="icon fa fa-filter"></i> Apply Filter
+                        </button>
+                        <a href="{% url 'dashboard:admin_analytics' %}" class="btn btn-secondary ml-2">
+                            <i class="icon fa fa-refresh"></i> Reset
+                        </a>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Key Metrics -->
+        <div class="row">
+            <div class="col-lg-3 col-md-6">
+                <div class="analytics-card">
+                    <div class="metric-value">{{ total_leaves }}</div>
+                    <div class="metric-label">Total Leave Requests</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="analytics-card">
+                    <div class="metric-value">{{ approved_rate|floatformat:1 }}%</div>
+                    <div class="metric-label">Approval Rate</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="analytics-card">
+                    <div class="metric-value">
+                        {% if most_common_leave_type %}
+                            {{ most_common_leave_type.leavetype|title }}
+                        {% else %}
+                            N/A
+                        {% endif %}
+                    </div>
+                    <div class="metric-label">Most Common Leave Type</div>
+                </div>
+            </div>
+            <div class="col-lg-3 col-md-6">
+                <div class="analytics-card">
+                    <div class="metric-value">{{ leaves.count }}</div>
+                    <div class="metric-label">Requests in Period</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Charts Section -->
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Leave Status Distribution</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="statusDistributionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Monthly Leave Trends</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="monthlyTrendsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Department Analysis -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Department Performance</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>Department Leave Statistics</h5>
+                                {% for dept in department_stats %}
+                                <div class="department-metric">
+                                    <div>
+                                        <strong>{{ dept.name }}</strong>
+                                        <div class="progress-bar-custom">
+                                            <div class="progress-bar-fill progress-width-{{ dept.percentage|default:0|floatformat:0 }}"></div>
+                                        </div>
+                                    </div>
+                                    <div class="text-right">
+                                        <span>{{ dept.leaves }} requests</span><br>
+                                        <small class="text-muted">{{ dept.pending }} pending</small>
+                                    </div>
+                                </div>
+                                {% empty %}
+                                <p class="text-muted">No department data available.</p>
+                                {% endfor %}
+                            </div>
+                            <div class="col-md-6">
+                                <h5>Top Leave Takers</h5>
+                                {% for user in top_leave_takers %}
+                                <div class="department-metric">
+                                    <span>{{ user.username }}</span>
+                                    <span>{{ user.leave_count }} requests</span>
+                                </div>
+                                {% empty %}
+                                <p class="text-muted">No leave data available.</p>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Recent Leave Activity</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="recent-activity">
+                            {% for leave in leaves %}
+                            <div class="activity-item status-{{ leave.status }}">
+                                <div class="row">
+                                    <div class="col-md-8">
+                                        <h6>{{ leave.user.username }} - {{ leave.leavetype|title }} Leave</h6>
+                                        <p>{{ leave.startdate }} to {{ leave.enddate }}</p>
+                                        {% if leave.reason %}
+                                        <small class="text-muted">Reason: {{ leave.reason|truncatechars:50 }}</small>
+                                        {% endif %}
+                                    </div>
+                                    <div class="col-md-4 text-right">
+                                        <span class="badge badge-{% if leave.status == 'approved' %}success{% elif leave.status == 'pending' %}warning{% elif leave.status == 'rejected' %}danger{% else %}secondary{% endif %}">
+                                            {{ leave.status|title }}
+                                        </span>
+                                        <br>
+                                        <small class="text-muted">{{ leave.created|date:"M d, Y" }}</small>
+                                    </div>
+                                </div>
+                            </div>
+                            {% empty %}
+                            <div class="alert alert-info">
+                                <i class="icon fa fa-info-circle"></i>
+                                No leave activity found for the selected period.
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </section>
+</section>
+{% endblock %}
+
+{% block extrajs %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+$(document).ready(function() {
+    // Initialize analytics charts
+    initCharts();
+    
+    // Auto-submit form when dates change
+    $('#start_date, #end_date').change(function() {
+        $(this).closest('form').submit();
+    });
+});
+
+function initCharts() {
+    // Status Distribution Chart
+    var leaveCtx = document.getElementById('statusDistributionChart');
+    if (leaveCtx) {
+        new Chart(leaveCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Pending', 'Approved', 'Rejected', 'Cancelled'],
+                datasets: [{
+                    data: [{{ pending_leaves|default:0 }}, {{ approved_leaves|default:0 }}, {{ rejected_leaves|default:0 }}, {{ cancelled_leaves|default:0 }}],
+                    backgroundColor: ['#ffc107', '#28a745', '#dc3545', '#6c757d']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
+
+    // Monthly trends chart
+    var monthlyCtx = document.getElementById('monthlyTrendsChart');
+    if (monthlyCtx) {
+        new Chart(monthlyCtx, {
+            type: 'line',
+            data: {
+                labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+                datasets: [{
+                    label: 'Leave Requests',
+                    data: [12, 19, 8, 15, 22, 18, 25, 20, 16, 14, 21, 17],
+                    borderColor: '#d04247',
+                    backgroundColor: 'rgba(208, 66, 71, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
+                }
+            }
+        });
+    }
+}
+</script>
+{% endblock %}
