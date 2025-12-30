@@ -57,6 +57,13 @@
         background: linear-gradient(to right, #d04247, #5a4747);
         transition: width 0.3s ease;
     }
+    
+    .progress-bar-custom {
+        height: 100%;
+        background: linear-gradient(to right, #d04247, #5a4747);
+        transition: width 0.3s ease;
+        width: 0%;
+    }
 
     .leave-type-item {
         display: flex;
@@ -167,7 +174,7 @@
                             <div class="col-md-6">
                                 <h5>Days Used: {{ total_days_used }} / {{ default_days }}</h5>
                                 <div class="progress-bar-container">
-                                    <div class="progress-bar" style="width: {{ leave_usage_percentage|default:0 }}%"></div>
+                                <div class="progress-bar-custom" data-percentage="{{ leave_usage_percentage|default:0 }}"></div>
                                 </div>
                                 <p>Remaining Days: <strong>{{ days_remaining }}</strong></p>
                             </div>
@@ -327,22 +334,34 @@
 
 {% block extrajs %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script id="django-data" type="application/json">
+{{ data_dict|json_script:"django-data" }}
+</script>
 <script>
 $(document).ready(function() {
     // Initialize charts with basic data
     initCharts();
     
+    // Get Django data safely
+    var djangoData = JSON.parse(document.getElementById('django-data').textContent);
+    
     // Welcome notification
     $.notify({
         icon: 'fa fa-user',
-        message: "Welcome to Enhanced LMS Dashboard, {{ request.user.username }}"
-    },{
+        message: "Welcome to Enhanced LMS Dashboard, " + djangoData.username
+    }, {
         type: 'info',
         timer: 4000
     });
 });
 
 function initCharts() {
+    // Get Django data safely
+    var djangoData = JSON.parse(document.getElementById('django-data').textContent);
+    
+    // Initialize progress bar
+    initProgressBar();
+    
     // Basic leave statistics chart
     var leaveCtx = document.getElementById('leaveChart');
     if (leaveCtx) {
@@ -351,7 +370,12 @@ function initCharts() {
             data: {
                 labels: ['Pending', 'Approved', 'Rejected', 'Cancelled'],
                 datasets: [{
-                    data: [{{ pending_leaves|default:0 }}, {{ approved_leaves|default:0 }}, {{ rejected_leaves|default:0 }}, {{ cancelled_leaves|default:0 }}],
+                    data: [
+                        djangoData.pending_leaves,
+                        djangoData.approved_leaves,
+                        djangoData.rejected_leaves,
+                        djangoData.cancelled_leaves
+                    ],
                     backgroundColor: ['#ffc107', '#28a745', '#dc3545', '#6c757d']
                 }]
             },
@@ -387,6 +411,14 @@ function initCharts() {
                 }
             }
         });
+    }
+}
+
+function initProgressBar() {
+    var progressBar = document.querySelector('.progress-bar-custom');
+    if (progressBar) {
+        var percentage = progressBar.getAttribute('data-percentage') || 0;
+        progressBar.style.width = percentage + '%';
     }
 }
 </script>

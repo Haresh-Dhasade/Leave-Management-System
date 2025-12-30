@@ -10,6 +10,44 @@ from leave.models import Leave
 
 
 # ---------------------------------------------------------
+# RELIGION MODEL
+# ---------------------------------------------------------
+class Religion(models.Model):
+    name = models.CharField(max_length=125)
+    description = models.CharField(max_length=125, null=True, blank=True)
+
+    created = models.DateTimeField(_('Created'), auto_now_add=True)
+    updated = models.DateTimeField(_('Updated'), auto_now=True)
+
+    class Meta:
+        verbose_name = _('Religion')
+        verbose_name_plural = _('Religions')
+        ordering = ['name', 'created']
+
+    def __str__(self):
+        return self.name
+
+
+# ---------------------------------------------------------
+# NATIONALITY MODEL
+# ---------------------------------------------------------
+class Nationality(models.Model):
+    name = models.CharField(max_length=125)
+    description = models.CharField(max_length=125, null=True, blank=True)
+
+    created = models.DateTimeField(_('Created'), auto_now_add=True)
+    updated = models.DateTimeField(_('Updated'), auto_now=True)
+
+    class Meta:
+        verbose_name = _('Nationality')
+        verbose_name_plural = _('Nationalities')
+        ordering = ['name', 'created']
+
+    def __str__(self):
+        return self.name
+
+
+# ---------------------------------------------------------
 # ROLE MODEL
 # ---------------------------------------------------------
 class Role(models.Model):
@@ -120,6 +158,12 @@ class Employee(models.Model):
     othername = models.CharField(_('Othername (optional)'), max_length=125, null=True, blank=True)
 
     birthday = models.DateField(_('Birthday'))
+
+    # New fields for religion and nationality
+    religion = models.ForeignKey(Religion, verbose_name=_('Religion'),
+                                 on_delete=models.SET_NULL, null=True, blank=True)
+    nationality = models.ForeignKey(Nationality, verbose_name=_('Nationality'),
+                                    on_delete=models.SET_NULL, null=True, blank=True)
 
     department = models.ForeignKey(Department, verbose_name=_('Department'),
                                    on_delete=models.SET_NULL, null=True)

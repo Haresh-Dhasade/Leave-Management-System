@@ -159,7 +159,7 @@
                             <div class="col-md-6">
                                 <h5>Days Used: {{ total_days_used }} / {{ default_days }}</h5>
                                 <div class="progress-bar-container">
-                                    <div class="progress-bar" style="width: {% widthratio total_days_used default_days 100 %}%"></div>
+                                    <div class="progress-bar" id="progressBar" data-used="{{ total_days_used|default:0 }}" data-total="{{ default_days|default:0 }}"></div>
                                 </div>
                                 <p>Remaining Days: <strong>{{ days_remaining }}</strong></p>
                             </div>
@@ -188,7 +188,11 @@
                         </div>
                         <div class="card-body">
                             <div class="chart-container">
-                                <canvas id="statusChart"></canvas>
+                                <canvas id="statusChart" 
+                                    data-pending="{{ status_distribution.pending|default:0 }}"
+                                    data-approved="{{ status_distribution.approved|default:0 }}"
+                                    data-rejected="{{ status_distribution.rejected|default:0 }}"
+                                    data-cancelled="{{ status_distribution.cancelled|default:0 }}"></canvas>
                             </div>
                         </div>
                     </div>
@@ -200,7 +204,7 @@
                         </div>
                         <div class="card-body">
                             <div class="chart-container">
-                                <canvas id="monthlyChart"></canvas>
+                                <canvas id="monthlyChart" data-trends="{{ monthly_trends_json|escapejs }}"></canvas>
                             </div>
                         </div>
                     </div>
@@ -214,7 +218,7 @@
                         </div>
                         <div class="card-body">
                             <div class="chart-container">
-                                <canvas id="leaveTypeChart"></canvas>
+                                <canvas id="leaveTypeChart" data-types="{{ leave_types_json|escapejs }}"></canvas>
                             </div>
                         </div>
                     </div>
@@ -226,7 +230,7 @@
                         </div>
                         <div class="card-body">
                             <div class="chart-container">
-                                <canvas id="monthlyUserChart"></canvas>
+                                <canvas id="monthlyUserChart" data-monthly="{{ monthly_data_json|escapejs }}"></canvas>
                             </div>
                         </div>
                     </div>
@@ -344,7 +348,22 @@
 
 <script>
 $(document).ready(function() {
-    var userType = "{{ user_type }}";
+    // Get user type from template
+    var userType = "{{ user_type|escapejs }}";
+    var username = "{{ request.user.username|escapejs }}";
+    
+    // Set progress bar width for regular users
+    if (userType === 'regular') {
+        var progressBar = document.getElementById('progressBar');
+        if (progressBar) {
+            var used = parseInt(progressBar.getAttribute('data-used') || 0);
+            var total = parseInt(progressBar.getAttribute('data-total') || 0);
+            if (total > 0) {
+                var percentage = Math.round((used / total) * 100);
+                progressBar.style.width = Math.min(percentage, 100) + '%';
+            }
+        }
+    }
     
     if (userType === 'superuser') {
         initSuperUserCharts();
@@ -355,7 +374,7 @@ $(document).ready(function() {
     // Welcome notification
     $.notify({
         icon: 'fa fa-user',
-        message: "Welcome to Enhanced LMS Dashboard, {{ request.user.username }}"
+        message: "Welcome to Enhanced LMS Dashboard, " + username
     },{
         type: 'info',
         timer: 4000
@@ -364,120 +383,153 @@ $(document).ready(function() {
 
 function initSuperUserCharts() {
     // Status Distribution Chart
-    var statusCtx = document.getElementById('statusChart').getContext('2d');
-    new Chart(statusCtx, {
-        type: 'doughnut',
-        data: {
-            labels: ['Pending', 'Approved', 'Rejected', 'Cancelled'],
-            datasets: [{
-                data: [
-                    parseInt("{{ status_distribution.pending|default:0 }}"),
-                    parseInt("{{ status_distribution.approved|default:0 }}"),
-                    parseInt("{{ status_distribution.rejected|default:0 }}"),
-                    parseInt("{{ status_distribution.cancelled|default:0 }}")
-                ],
-                backgroundColor: ['#ffc107', '#28a745', '#dc3545', '#6c757d']
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
-        }
-    });
+    var statusCanvas = document.getElementById('statusChart');
+    if (statusCanvas) {
+        var statusCtx = statusCanvas.getContext('2d');
+        new Chart(statusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Pending', 'Approved', 'Rejected', 'Cancelled'],
+                datasets: [{
+                    data: [
+                        parseInt(statusCanvas.getAttribute('data-pending') || 0),
+                        parseInt(statusCanvas.getAttribute('data-approved') || 0),
+                        parseInt(statusCanvas.getAttribute('data-rejected') || 0),
+                        parseInt(statusCanvas.getAttribute('data-cancelled') || 0)
+                    ],
+                    backgroundColor: ['#ffc107', '#28a745', '#dc3545', '#6c757d']
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
 
     // Monthly Trends Chart
-    var monthlyCtx = document.getElementById('monthlyChart').getContext('2d');
-    var monthlyLabels = [];
-    var monthlyData = [];
-    
-    {% for trend in monthly_trends %}
-    monthlyLabels.push("{{ trend.month }}");
-    monthlyData.push(parseInt("{{ trend.count }}"));
-    {% endfor %}
-    
-    new Chart(monthlyCtx, {
-        type: 'line',
-        data: {
-            labels: monthlyLabels,
-            datasets: [{
-                label: 'Leave Requests',
-                data: monthlyData,
-                borderColor: '#d04247',
-                backgroundColor: 'rgba(208, 66, 71, 0.1)',
-                tension: 0.4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true
+    var monthlyCanvas = document.getElementById('monthlyChart');
+    if (monthlyCanvas) {
+        var monthlyCtx = monthlyCanvas.getContext('2d');
+        var trendsData = [];
+        try {
+            trendsData = JSON.parse(monthlyCanvas.getAttribute('data-trends') || '[]');
+        } catch (e) {
+            trendsData = [];
+        }
+        
+        var monthlyLabels = [];
+        var monthlyData = [];
+        
+        for (var i = 0; i < trendsData.length; i++) {
+            monthlyLabels.push(trendsData[i].month);
+            monthlyData.push(parseInt(trendsData[i].count));
+        }
+        
+        new Chart(monthlyCtx, {
+            type: 'line',
+            data: {
+                labels: monthlyLabels,
+                datasets: [{
+                    label: 'Leave Requests',
+                    data: monthlyData,
+                    borderColor: '#d04247',
+                    backgroundColor: 'rgba(208, 66, 71, 0.1)',
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
                 }
             }
-        }
-    });
+        });
+    }
 }
 
 function initUserCharts() {
     // Leave Type Chart
-    var typeCtx = document.getElementById('leaveTypeChart').getContext('2d');
-    var typeLabels = [];
-    var typeData = [];
-    
-    {% for type, count in leave_types.items %}
-    typeLabels.push("{{ type|title }}");
-    typeData.push(parseInt("{{ count }}"));
-    {% endfor %}
-    
-    new Chart(typeCtx, {
-        type: 'pie',
-        data: {
-            labels: typeLabels,
-            datasets: [{
-                data: typeData,
-                backgroundColor: [
-                    '#d04247', '#5a4747', '#ffc107', '#28a745', 
-                    '#dc3545', '#17a2b8', '#6f42c1', '#fd7e14', '#20c997'
-                ]
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false
+    var typeCanvas = document.getElementById('leaveTypeChart');
+    if (typeCanvas) {
+        var typeCtx = typeCanvas.getContext('2d');
+        var typesData = {};
+        try {
+            typesData = JSON.parse(typeCanvas.getAttribute('data-types') || '{}');
+        } catch (e) {
+            typesData = {};
         }
-    });
+        
+        var typeLabels = [];
+        var typeData = [];
+        
+        for (var type in typesData) {
+            typeLabels.push(type.charAt(0).toUpperCase() + type.slice(1));
+            typeData.push(parseInt(typesData[type]));
+        }
+        
+        new Chart(typeCtx, {
+            type: 'pie',
+            data: {
+                labels: typeLabels,
+                datasets: [{
+                    data: typeData,
+                    backgroundColor: [
+                        '#d04247', '#5a4747', '#ffc107', '#28a745', 
+                        '#dc3545', '#17a2b8', '#6f42c1', '#fd7e14', '#20c997'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+    }
 
     // Monthly User Chart
-    var monthlyUserCtx = document.getElementById('monthlyUserChart').getContext('2d');
-    var monthlyUserLabels = [];
-    var monthlyUserData = [];
-    
-    {% for data in monthly_data %}
-    monthlyUserLabels.push("{{ data.month }}");
-    monthlyUserData.push(parseInt("{{ data.count }}"));
-    {% endfor %}
-    
-    new Chart(monthlyUserCtx, {
-        type: 'bar',
-        data: {
-            labels: monthlyUserLabels,
-            datasets: [{
-                label: 'Your Leave Requests',
-                data: monthlyUserData,
-                backgroundColor: '#d04247'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            scales: {
-                y: {
-                    beginAtZero: true
+    var monthlyUserCanvas = document.getElementById('monthlyUserChart');
+    if (monthlyUserCanvas) {
+        var monthlyUserCtx = monthlyUserCanvas.getContext('2d');
+        var monthlyDataArray = [];
+        try {
+            monthlyDataArray = JSON.parse(monthlyUserCanvas.getAttribute('data-monthly') || '[]');
+        } catch (e) {
+            monthlyDataArray = [];
+        }
+        
+        var monthlyUserLabels = [];
+        var monthlyUserData = [];
+        
+        for (var i = 0; i < monthlyDataArray.length; i++) {
+            monthlyUserLabels.push(monthlyDataArray[i].month);
+            monthlyUserData.push(parseInt(monthlyDataArray[i].count));
+        }
+        
+        new Chart(monthlyUserCtx, {
+            type: 'bar',
+            data: {
+                labels: monthlyUserLabels,
+                datasets: [{
+                    label: 'Your Leave Requests',
+                    data: monthlyUserData,
+                    backgroundColor: '#d04247'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true
+                    }
                 }
             }
-        }
-    });
+        });
+    }
 }
 </script>
 {% endblock %}
