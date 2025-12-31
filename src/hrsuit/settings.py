@@ -14,7 +14,10 @@ SECRET_KEY = 'This Is Secret'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+
+# CSRF Trusted Origins for Django 4.2+
+CSRF_TRUSTED_ORIGINS = ['http://localhost', 'http://127.0.0.1']
 
 
 # Email Settings
